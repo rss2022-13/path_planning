@@ -37,7 +37,35 @@ class PurePursuit(object):
         """ Finds the closest point on the followed trajectory based on localization information
         """
         # Current position based on odometry
-        pose = np.array([odom.pose.pose.position.x, odom.pose.pose.position.y])
+        cur_pos = np.array([odom.pose.pose.position.x, odom.pose.pose.position.y])
+
+        # Trajectory points
+        traj_pts = np.array(self.trajectory.points)
+        
+        # Relative Trajectory Segment Vectors
+        traj_deltas = np.diff(traj_pts, axis=0)
+        traj_norms = np.linalg.norm(traj_deltas, axis=1)
+
+        # Relative Vectors from Current Pose to Trajectory Points
+        traj2pos_deltas = np.subtract(cur_pos, traj_pts[:-1])
+
+        # Finding closest point for each segment
+            
+        dot_product = np.sum(np.multiply(traj2pos_deltas, traj_deltas), axis=1)
+            # Scale it to the norms of the trajectory segments
+        scaled_dot_product = np.divide(dot_product, traj_norms)
+            # Cap the result to either a 0 or a 1, to stay within segment boundaries
+        capped = np.maximum(np.minimum(scaled_dot_product, 1), 0)
+            # Multiply this value to the segment deltas and add it to the traj_pts to get closest points
+            # on each segment
+        closest_pts_list = np.add(traj_pts[:-1], np.multiply(traj_deltas, capped.reshape(len(capped), 1)))
+        closest_dist_list = np.linalg.norm(np.subtract(cur_pos, closest_pts), axis=1)
+        # index of the actual closesst point
+        c_ind = np.argmin(closest_dist_list)
+
+        # Return a tuple of the closest distance and the index value
+        return (closest_dist_list[c_ind], c_ind)
+
 
     def pursuit(self, msg):
         """ Publishes drive instructions based on current PF pose information
