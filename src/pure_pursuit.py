@@ -16,13 +16,14 @@ class PurePursuit(object):
     """
     def __init__(self):
         self.odom_topic       = rospy.get_param("~odom_topic")
-        self.lookahead        = # FILL IN #
-        self.speed            = # FILL IN #
-        self.wrap             = # FILL IN #
-        self.wheelbase_length = # FILL IN #
+        self.lookahead        = 1 # Tune later
+        self.speed            = 1 # Tune later
+        self.wrap             = 0 # Unsure of what this is for
+        self.wheelbase_length = 0.5 # Measure later
         self.trajectory  = utils.LineTrajectory("/followed_trajectory")
         self.traj_sub = rospy.Subscriber("/trajectory/current", PoseArray, self.trajectory_callback, queue_size=1)
         self.drive_pub = rospy.Publisher("/drive", AckermannDriveStamped, queue_size=1)
+        self.odom_sub = rospy.Subscriber(self.odom_topic, Odometry, self.pursuit, queue_size=1)
 
     def trajectory_callback(self, msg):
         ''' Clears the currently followed trajectory, and loads the new one from the message
@@ -32,8 +33,18 @@ class PurePursuit(object):
         self.trajectory.fromPoseArray(msg)
         self.trajectory.publish_viz(duration=0.0)
 
+    def find_closest_point(self, odom):
+        """ Finds the closest point on the followed trajectory based on localization information
+        """
+        # Current position based on odometry
+        pose = np.array([odom.pose.pose.position.x, odom.pose.pose.position.y])
+
+    def pursuit(self, msg):
+        """ Publishes drive instructions based on current PF pose information
+        """
+
 
 if __name__=="__main__":
     rospy.init_node("pure_pursuit")
     pf = PurePursuit()
-    rospy.spin()
+    rosy.spin()
