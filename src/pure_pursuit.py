@@ -34,7 +34,15 @@ class PurePursuit(object):
         self.trajectory.publish_viz(duration=0.0)
 
     def find_closest_point(self, odom):
-        """ Finds the closest point on the followed trajectory based on localization information
+        """ Finds the closest point on the followed trajectory based on localization information.
+            Inputs
+            --------
+            odom: Odometry msg, describes vehicle's position in the world
+
+            Outputs
+            --------
+            closest: Tuple of the closest point, closest distance, and the index value of the trajectory 
+                    segment (starting from 0)
         """
         # Current position based on odometry
         cur_pos = np.array([odom.pose.pose.position.x, odom.pose.pose.position.y])
@@ -63,14 +71,64 @@ class PurePursuit(object):
         # index of the actual closesst point
         c_ind = np.argmin(closest_dist_list)
 
-        # Return a tuple of the closest distance and the index value
-        return (closest_dist_list[c_ind], c_ind)
+        # Return a tuple of the closest distance, closest point, and the index value
+        closest = (closest_pts_list[c_ind][:], closest_dist_list[c_ind], c_ind)
+        return closest
 
+    def find_goal_point(self, odom)
+        """ Find the goal point on the current trajectory
+        """
+        
+        cur_pos = np.array([odom.pose.pose.position.x, odom.pose.pose.position.y])
+        closest = self.find_closest_point(odom)
+
+        traj_pts = np.array(self.trajectory.points)
+
+        closest_pt = closest[0]
+        closest_dist = closest[1]
+        closest_ind = closest[2]
+
+
+        if (closest_dist >= self.lookahead):
+            return closest_pt
+        else:
+            # Iterator for goal point search
+            i = 1
+
+            while i+closest_ind < len(traj_pts):
+                # Trajectory Segment (starting at the closest point)
+                start_pt = i == 1 ? closest_pt:traj_pts[closest_ind+i-1] 
+                end_pt = traj_pts[closest_ind+i]
+                seg_delta = np.subtract(end_pt, start_pt)
+
+                robot_to_start = np.subtract(start_pt, cur_pos)
+                # Guaranteed intersection with lookahead circle if the closest distance is 
+                # less than lookahead distance
+                a = np.dot(seg_delta,seg_delta)
+                b = 2*np.dot(seg_delta, robot_to_start)
+                c = np.dot(robot_to_start, robot_to_start) - self.lookahead**2
+
+                # Since we are starting at the closest point
+                # and we are assuming it is within the circle
+                # the correct t is positive while the other is negative
+                t1 = (-b+np.sqrt(b**2 - 4*a*c))/(2*a)
+                t2 = (-b-np.sqrt(b**2 - 4*a*c))/(2*a)
+            
+                t = max(t1, t2)
+                if t < 0:
+                    print "Something went very wrong"
+                elif t < 1:
+                    return np.add(start_pt, np.multiply(seg_delta, t))
+                else:
+                    i += 1
+            return None
+            
+            
 
     def pursuit(self, msg):
         """ Publishes drive instructions based on current PF pose information
         """
-
+        
 
 if __name__=="__main__":
     rospy.init_node("pure_pursuit")
