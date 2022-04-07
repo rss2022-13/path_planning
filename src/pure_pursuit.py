@@ -28,7 +28,7 @@ class PurePursuit(object):
     def trajectory_callback(self, msg):
         ''' Clears the currently followed trajectory, and loads the new one from the message
         '''
-        print "Receiving new trajectory:", len(msg.poses), "points"
+        print ("Receiving new trajectory:" + str(len(msg.poses)) + "points")
         self.trajectory.clear()
         self.trajectory.fromPoseArray(msg)
         self.trajectory.publish_viz(duration=0.0)
@@ -75,7 +75,7 @@ class PurePursuit(object):
         closest = (closest_pts_list[c_ind][:], closest_dist_list[c_ind], c_ind)
         return closest
 
-    def find_goal_point(self, odom)
+    def find_goal_point(self, odom):
         """ Find the goal point on the current trajectory
         """
         
@@ -116,7 +116,7 @@ class PurePursuit(object):
             
                 t = max(t1, t2)
                 if t < 0:
-                    print "Something went very wrong"
+                    print("Something went very wrong")
                 elif t < 1:
                     return np.add(start_pt, np.multiply(seg_delta, t))
                 else:
