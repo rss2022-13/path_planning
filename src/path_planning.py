@@ -5,6 +5,7 @@ import numpy as np
 from geometry_msgs.msg import PoseStamped, PoseArray
 from nav_msgs.msg import Odometry, OccupancyGrid
 from tf.transformations import quaternion_from_euler, euler_from_quaternion, quaternion_matrix
+from skimage.morphology import dilation, disk
 import rospkg
 import time, os
 from utils import LineTrajectory
@@ -50,7 +51,13 @@ class PathPlan(object):
         map_set param to true so that other functions can run
         '''
         # data is indexed by (v,u) now that it is reshaped
-        self.map = np.array(msg.data).reshape((msg.info.height, msg.info.width))
+        map = np.array(msg.data).reshape((msg.info.height, msg.info.width))
+        self.map = np.zeros((msg.info.height, msg.info.width))
+        # make all nonzero values 1 (including -1 vals)
+        map[np.nonzero(map)] = 1
+        # Now the map is dilated by one cell in every direction
+        dilation(self.map, disk(8), out=self.map)
+
         self.map_resolution = msg.info.resolution
 
         # rot_mat is a 4x4 homo Transformation once we add the position elements
@@ -144,7 +151,7 @@ class PathPlan(object):
         # A* search
         frontier = PriorityQueue()
         start_u, start_v = self.xy_to_uv(start_point)
-        end_u, end_v = self.xy_to_uv(start_point)
+        end_u, end_v = self.xy_to_uv(end_point)
         frontier.put((start_v, start_u), 0)
         came_from = dict()
         cost_so_far = dict()
@@ -165,7 +172,7 @@ class PathPlan(object):
                 new_cost = cost_so_far[current] + 1  #TODO: 1 is placeholder for graph.cost(current, next)
                 if next not in cost_so_far or new_cost < cost_so_far[next]:
                     cost_so_far[next] = new_cost
-                    priority = new_cost + heuristic((end_v, end_u), next)
+                    priority = new_cost + self.heuristic((end_v, end_u), next)
                     frontier.put(next, priority)
                     came_from[next] = current
                     
@@ -173,13 +180,13 @@ class PathPlan(object):
         s = Point()
         curr = (start_v, start_u)
         s.x, s.y = self.uv_to_xy((start_v, start_u))[0], self.uv_to_xy((start_v, start_u))[1]
-        self.trajectory.points += [x]
+        self.trajectory.points += [(s.x, s.y)]
         self.trajectory.distances += [0]
         while curr in came_from.keys():
             next = came_from[curr]
-            s = Point()
-            s.x, s.y = self.uv_to_xy(next)[0], self.uv_to_xy(next)[1]
-            self.trajectory.points += [x]
+            s2 = Point()
+            s2.x, s2.y = self.uv_to_xy(next)[0], self.uv_to_xy(next)[1]
+            self.trajectory.points += [(s2.x, s2.y)]
             self.trajectory.distances += cost_so_far[curr]
             curr = next
          
