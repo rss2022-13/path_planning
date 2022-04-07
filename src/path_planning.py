@@ -2,10 +2,11 @@
 
 import rospy
 import numpy as np
-from geometry_msgs.msg import PoseStamped, PoseArray
+from geometry_msgs.msg import PoseStamped, PoseArray, Point
 from nav_msgs.msg import Odometry, OccupancyGrid
 from tf.transformations import quaternion_from_euler, euler_from_quaternion, quaternion_matrix
 from skimage.morphology import dilation, disk
+import queue
 import dubins
 import rospkg
 import time, os
@@ -157,7 +158,7 @@ class PathPlan(object):
         ## CODE FOR PATH PLANNING ##
 
         # A* search
-        frontier = PriorityQueue()
+        frontier = queue.PriorityQueue()
         start_u, start_v = self.xy_to_uv(start_point)
         end_u, end_v = self.xy_to_uv(end_point)
         frontier.put((start_v, start_u), 0)
