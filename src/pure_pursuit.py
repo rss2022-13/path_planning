@@ -97,7 +97,11 @@ class PurePursuit(object):
 
             while i+closest_ind < len(traj_pts):
                 # Trajectory Segment (starting at the closest point)
-                start_pt = i == 1 ? closest_pt:traj_pts[closest_ind+i-1] 
+                if i == 1:
+                    start_pt = closest_pt
+                else:
+                    start_pt = traj_pts[closest_ind+i-1]
+                    
                 end_pt = traj_pts[closest_ind+i]
                 seg_delta = np.subtract(end_pt, start_pt)
 
