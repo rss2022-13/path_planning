@@ -6,6 +6,7 @@ from geometry_msgs.msg import PoseStamped, PoseArray
 from nav_msgs.msg import Odometry, OccupancyGrid
 from tf.transformations import quaternion_from_euler, euler_from_quaternion, quaternion_matrix
 from skimage.morphology import dilation, disk
+import dubins
 import rospkg
 import time, os
 from utils import LineTrajectory
@@ -31,15 +32,18 @@ class PathPlan(object):
         self.map_resolution = None
 
         # odom traits
+        self.turning_radius = 1
 
         # Start Traits
         self.start = None
+        self.start__theta = None
 
         # clicked traits
         self.clicked = None
         
         # Goal Traits
         self.goal = None
+        self.goal_theta = None
 
         #publish trajectory
         self.plan_path(self.start, self.goal, self.map)
@@ -50,22 +54,22 @@ class PathPlan(object):
         Populates our map fields in the class with the map object, and sets the 
         map_set param to true so that other functions can run
         '''
-        # data is indexed by (v,u) now that it is reshaped
-        map = np.array(msg.data).reshape((msg.info.height, msg.info.width))
-        self.map = np.zeros((msg.info.height, msg.info.width))
+        # data is indexed by (u,v) now that it is reshaped and transposed
+        map = np.array(msg.data).reshape((msg.info.height, msg.info.width)).T
+        self.map = np.zeros((msg.info.width, msg.info.height))
         # make all nonzero values 1 (including -1 vals)
         map[np.nonzero(map)] = 1
-        # Now the map is dilated by one cell in every direction
+        # Now the map is dilated by disks of 8px radius
         dilation(self.map, disk(8), out=self.map)
+        self.map = self.map.astype(int)
 
         self.map_resolution = msg.info.resolution
 
         # rot_mat is a 4x4 homo Transformation once we add the position elements
-        rot_mat = quaternion_matrix([msg.info.origin.orientation.x, msg.info.origin.orientation.y, msg.info.origin.orientation.z, msg.info.origin.orientation.w])
-        rot_mat[0,3] = msg.info.origin.position.x
-        rot_mat[1,3] = msg.info.origin.position.y
-        rot_mat[2,3] = 0
-        self.map_Transform = rot_mat
+        self.map_Transform = quaternion_matrix([msg.info.origin.orientation.x, msg.info.origin.orientation.y, msg.info.origin.orientation.z, msg.info.origin.orientation.w])
+        self.map_Transform[0,3] = msg.info.origin.position.x
+        self.map_Transform[1,3] = msg.info.origin.position.y
+        self.map_Transform[2,3] = 0
         self.map_set = True
 
         return None
@@ -116,6 +120,7 @@ class PathPlan(object):
         self.goal[0,3] = msg.pose.position.x
         self.goal[1,3] = msg.pose.position.y
         self.goal[2,3] = 0
+        self.goal_theta = euler_from_quaternion([msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w])[2]
 
         return None
 
@@ -127,6 +132,7 @@ class PathPlan(object):
         self.start[0,3] = msg.pose.position.x
         self.start[1,3] = msg.pose.position.y
         self.start[2,3] = 0
+        self.start_theta = euler_from_quaternion([msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w])[2]
 
         return None
 
@@ -142,8 +148,10 @@ class PathPlan(object):
         return None
 
     def heuristic(self, node1, node2):
-        #TODO: implement dubins curve solution (used in plan_path)
-        pass
+        # Dubins curve heuristic (used in plan_path)
+        start = node1+[0] #TODO: Change [0] to an angle that matches the path better
+        end = node2+[self.goal_theta]
+        return dubins.path_length(dubins.shortest_path(start, end, self.turning_radius))
         
     def plan_path(self, start_point, end_point, map):
         ## CODE FOR PATH PLANNING ##
@@ -165,14 +173,16 @@ class PathPlan(object):
                 break
 
             u, v = current[0], current[1]
-            neighbors = {(v, u+1), (v, u-1), (v+1, u), (v-1, u), (v-1,u-1), (v-1, u+1), (v+1, u-1), (v+1, u+1)}
+            neighbors = {(u+1, v), (u-1, v), (u, v+1), (u, v-1), (u-1,v-1), (u-1, v+1), (u+1, v-1), (u+1, v+1)}
             for next in neighbors:   #graph.neighbors(current)
-                # TODO: ignore this path if obstacle
+                # Ignore this path if obstacle
+                if self.map[next[0], next[1]] == 1:
+                    continue
                 
                 new_cost = cost_so_far[current] + 1  #TODO: 1 is placeholder for graph.cost(current, next)
                 if next not in cost_so_far or new_cost < cost_so_far[next]:
                     cost_so_far[next] = new_cost
-                    priority = new_cost + self.heuristic((end_v, end_u), next)
+                    priority = new_cost + self.heuristic(next,(end_u, end_v))
                     frontier.put(next, priority)
                     came_from[next] = current
                     
