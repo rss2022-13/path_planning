@@ -18,7 +18,6 @@ class PurePursuit(object):
         self.odom_topic       = rospy.get_param("~odom_topic")
         self.lookahead        = 1 # Tune later
         self.speed            = 1 # Tune later
-        self.wrap             = 0 # Unsure of what this is for
         self.wheelbase_length = 0.5 # Measure later
         self.trajectory  = utils.LineTrajectory("/followed_trajectory")
         self.traj_sub = rospy.Subscriber("/trajectory/current", PoseArray, self.trajectory_callback, queue_size=1)
@@ -97,7 +96,8 @@ class PurePursuit(object):
 
             while i+closest_ind < len(traj_pts):
                 # Trajectory Segment (starting at the closest point)
-                start_pt = i == 1 ? closest_pt:traj_pts[closest_ind+i-1] 
+                start_pt = closest_pt if i == 1 else traj_pts[closest_ind+i-1]
+                
                 end_pt = traj_pts[closest_ind+i]
                 seg_delta = np.subtract(end_pt, start_pt)
 
@@ -128,7 +128,30 @@ class PurePursuit(object):
     def pursuit(self, msg):
         """ Publishes drive instructions based on current PF pose information
         """
-        
+       # Find the goal point
+       goal_point = self.find_goal_point(msg)
+
+       # Find current position and orientation
+       cur_pos = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, 0])
+       cur_theta = np.arccos(msg.pose.pose.orientation.w)*2
+       
+       # Determine the perpendicular distance to the goal point from the car position
+       orientation_vec = np.array([np.cos(cur_theta), np.sin(cur_theta), 0])
+       diff_vec = np.subtract(goal_point, cur_pos)
+       cross = np.cross(diff_vec, orientation_vec)
+       perp_dist = cross[2] # Allowed to be negative to distinguish between turing left or right
+       
+       arc_curvature = (2*perp_dist)/(self.lookahead**2)
+       steering_angle = np.arctan(self.wheelbase_length*arc_curvature) # Getting steering angle from curvature
+
+       ack_msg = AckermannDriveStamped()
+       ack_msg.header.stamp = rospy.Time.now()
+       ack_msg.header.frame_id = msg.header.frame_id
+       ack_msg.drive.steering_angle = steering_angle
+       ack_msg.drive.speed = self.speed
+
+       self.drive_pub.publish(ack_msg)
+
 
 if __name__=="__main__":
     rospy.init_node("pure_pursuit")
