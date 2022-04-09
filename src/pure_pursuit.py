@@ -129,7 +129,30 @@ class PurePursuit(object):
     def pursuit(self, msg):
         """ Publishes drive instructions based on current PF pose information
         """
-        
+       # Find the goal point
+       goal_point = self.find_goal_point(msg)
+
+       # Find current position and orientation
+       cur_pos = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, 0])
+       cur_theta = np.arccos(msg.pose.pose.orientation.w)*2
+       
+       # Determine the perpendicular distance to the goal point from the car position
+       orientation_vec = np.array([np.cos(cur_theta), np.sin(cur_theta), 0])
+       diff_vec = np.subtract(goal_point, cur_pos)
+       cross = np.cross(diff_vec, orientation_vec)
+       perp_dist = cross[2] # Allowed to be negative to distinguish between turing left or right
+       
+       arc_curvature = (2*perp_dist)/(self.lookahead**2)
+       steering_angle = np.arctan(self.wheelbase_length*arc_curvature) # Getting steering angle from curvature
+
+       ack_msg = AckermannDriveStamped()
+       ack_msg.header.stamp = rospy.Time.now()
+       ack_msg.header.frame_id = msg.header.frame_id
+       ack_msg.drive.steering_angle = steering_angle
+       ack_msg.drive.speed = self.speed
+
+       self.drive_pub.publish(ack_msg)
+
 
 if __name__=="__main__":
     rospy.init_node("pure_pursuit")
