@@ -18,7 +18,6 @@ class PurePursuit(object):
         self.odom_topic       = rospy.get_param("~odom_topic")
         self.lookahead        = 1 # Tune later
         self.speed            = 1 # Tune later
-        self.wrap             = 0 # Unsure of what this is for
         self.wheelbase_length = 0.5 # Measure later
         self.trajectory  = utils.LineTrajectory("/followed_trajectory")
         self.traj_sub = rospy.Subscriber("/trajectory/current", PoseArray, self.trajectory_callback, queue_size=1)
