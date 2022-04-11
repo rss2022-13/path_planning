@@ -11,6 +11,7 @@ from Queue import PriorityQueue
 # import rospkg
 import time, os
 from utils import LineTrajectory
+import datetime
 
 class PathPlan(object):
     """ Listens for goal pose published by RViz and uses it to plan a path from
@@ -161,10 +162,11 @@ class PathPlan(object):
         '''
         Stores the clicked location as a 4x4 Transformation matrix
         '''
-        self.clicked = quaternion_matrix([msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w])
-        self.clicked[0,3] = msg.pose.position.x
-        self.clicked[1,3] = msg.pose.position.y
-        self.clicked[2,3] = 0
+        #self.clicked = quaternion_matrix([msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w])
+        #self.clicked[0,3] = msg.point.position.x
+        #self.clicked[1,3] = msg.point.position.y
+        #self.clicked[2,3] = 0
+        self.clicked = int(np.round(msg.point.x)), int(np.round(msg.point.y)), int(np.round(msg.point.z))
 
         return None
 
@@ -179,7 +181,7 @@ class PathPlan(object):
         
     def plan_path(self):
         ## CODE FOR PATH PLANNING ##
-
+        start = datetime.datetime.now()
         # A* search
         rospy.loginfo("Planning Path")
         frontier = PriorityQueue()
@@ -215,7 +217,7 @@ class PathPlan(object):
                 if next not in cost_so_far or new_cost < cost_so_far[next]:
                     cost_so_far[next] = new_cost
                     priority = new_cost + self.heuristic(next,(end_u, end_v))
-                    frontier.put((priority, time.time(), next))
+                    frontier.put((priority, datetime.datetime.now(), next))
                     came_from[next] = current
                     
         # set up trajectory based on A* search results
@@ -234,7 +236,12 @@ class PathPlan(object):
         
         for e in reversed(pts):
             self.trajectory.addPoint(e)
-        
+
+        end = datetime.datetime.now()
+        difference = end - start
+        seconds_in_day = 3600*24
+        time = divmod(difference.days * seconds_in_day + difference.seconds, 60)
+        print("Time:", time)
         # publish trajectory
         self.traj_pub.publish(self.trajectory.toPoseArray())
 
