@@ -114,7 +114,7 @@ class PurePursuit(object):
             first_out = closest_ind
             for i in range(closest_ind+1, len(traj_pts)):
                 pt = traj_pts[i][:]
-                squared_dist = np.dot(cur_pos-pt)
+                squared_dist = np.dot(cur_pos-pt, cur_pos-pt)
                 if (squared_dist > self.lookahead**2):
                     first_out = i
                     break
@@ -124,9 +124,9 @@ class PurePursuit(object):
             vec_v = out_pt - in_pt;
             vec_w = in_pt - cur_pos;
             
-            c = dot(vec_w, vec_w) - self.lookahead**2
-            b = 2*dot(vec_v, vec_w)
-            a = dot(vec_v, vec_v)
+            c = np.dot(vec_w, vec_w) - self.lookahead**2
+            b = 2*np.dot(vec_v, vec_w)
+            a = np.dot(vec_v, vec_v)
             
             t = 0
             if (b**2 - 4*a*c) > 0:
