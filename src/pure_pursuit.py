@@ -16,9 +16,9 @@ class PurePursuit(object):
     """
     def __init__(self):
         self.odom_topic       = rospy.get_param("~odom_topic")
-        self.lookahead        = 0.5 # Tune later
-        self.speed            = 0.5 # Tune later
-        self.wheelbase_length = 0.5 # Measure later
+        self.lookahead        = 1 # Tune later
+        self.speed            = 1 # Tune later
+        self.wheelbase_length = 0.325 # From model robot, change later
         self.trajectory  = utils.LineTrajectory("/followed_trajectory")
         self.traj_sub = rospy.Subscriber("/trajectory/current", PoseArray, self.trajectory_callback, queue_size=1)
         self.drive_pub = rospy.Publisher("/drive", AckermannDriveStamped, queue_size=1)
@@ -84,7 +84,7 @@ class PurePursuit(object):
             return None
         rospy.loginfo(len(closest_dist_list))
         # Return a tuple of the closest distance, closest point, and the index value
-        closest = (closest_pts_list[c_ind][:], closest_dist_list[c_ind], c_ind)
+        closest = (closest_pts_list[c_ind], c_ind)
         return closest
 
     def find_goal_point(self, odom):
@@ -103,12 +103,11 @@ class PurePursuit(object):
             traj_pts[i][1] = point[1]
 
         closest_pt = closest[0]
-        closest_dist = closest[1]
-        closest_ind = closest[2]
+        closest_ind = closest[1]
 
-
-        if (abs(closest_dist-self.lookahead) < 1e-6):
-            return closest_pt
+        closest_dist_squared = np.dot(closest_pt-cur_pos, closest_pt-cur_pos)
+        if closest_dist_squared > self.lookahead**2:
+            return (closest_pt, False)
         else:
             # Find the first point that is farther than the lookahead distance
             first_out = closest_ind
@@ -132,14 +131,16 @@ class PurePursuit(object):
             if (b**2 - 4*a*c) > 0:
                 t1 = (-b + np.sqrt(b**2 - 4*a*c))/(2*a)
                 t2 = (-b - np.sqrt(b**2 - 4*a*c))/(2*a)
+                
                 t = max(t1, t2)
+                    
 
-                return in_pt + t*vec_v
+                return (in_pt + t*vec_v, True)
 
             elif abs(b**2 - 4*a*c) < 1e-6 and b < 0:
                 t = -b/(2*a)
 
-                return in_pt + t*vec_v
+                return (in_pt + t*vec_v, True)
 
             else:
                 rospy.loginfo("wtf")
@@ -152,20 +153,28 @@ class PurePursuit(object):
         """ Publishes drive instructions based on current PF pose information
         """
         # Find the goal point
-        goal_point = self.find_goal_point(msg)
-        if goal_point is not None:
+        goal = self.find_goal_point(msg)
+        if goal is not None:
+            goal_point = goal[0]
             goal_point = np.append(goal_point, [0])
+            
             # Find current position and orientation
             cur_pos = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, 0])
             cur_theta = np.arccos(msg.pose.pose.orientation.w)*2
-       
+            
             # Determine the perpendicular distance to the goal point from the car position
             orientation_vec = np.array([np.cos(cur_theta), np.sin(cur_theta), 0])
             diff_vec = np.subtract(goal_point, cur_pos)
             cross = np.cross(orientation_vec, diff_vec)
             perp_dist = cross[2] # Allowed to be negative to distinguish between turing left or right
        
-            arc_curvature = (2*perp_dist)/(self.lookahead**2)
+            
+            if goal[1]:
+                arc_curvature = (2*perp_dist)/(self.lookahead**2)
+            else:
+                arc_curvature = (2*perp_dist)/(np.dot(cur_pos-goal_point, cur_pos-goal_point))
+                
+
             steering_angle = np.arctan(self.wheelbase_length*arc_curvature) # Getting steering angle from curvature
             
             ack_msg = AckermannDriveStamped()
