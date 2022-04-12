@@ -49,11 +49,7 @@ class PurePursuit(object):
         cur_pos = np.array([odom.pose.pose.position.x, odom.pose.pose.position.y])
 
         # Trajectory points
-        traj_pts = np.zeros((len(self.trajectory.points), 2))
-        for i in range(len(self.trajectory.points)):
-            point = self.trajectory.points[i]
-            traj_pts[i][0] = point[0]
-            traj_pts[i][1] = point[1]
+        traj_pts = np.array(self.trajectory.points)
 
         # Relative Trajectory Segment Vectors
         traj_deltas = np.diff(traj_pts, axis=0)
@@ -134,7 +130,7 @@ class PurePursuit(object):
                 
                 t = max(t1, t2)
                     
-
+                print " New Point "
                 return (in_pt + t*vec_v, True)
 
             elif abs(b**2 - 4*a*c) < 1e-6 and b < 0:
