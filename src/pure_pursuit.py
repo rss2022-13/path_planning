@@ -15,7 +15,7 @@ class PurePursuit(object):
     """ Implements Pure Pursuit trajectory tracking with a fixed lookahead and speed.
     """
     def __init__(self):
-        self.odom_topic       = "/odom" #rospy.get_param("~odom_topic")
+        self.odom_topic       = rospy.get_param("~odom_topic")
         self.lookahead        = 2 # Tune later
         self.speed            = 1 # Tune later
         self.wheelbase_length = 0.325 # From model robot, change later
