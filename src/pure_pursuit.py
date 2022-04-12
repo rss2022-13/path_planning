@@ -4,7 +4,7 @@ import rospy
 import numpy as np
 import time
 import utils
-import tf
+from tf.transformations import euler_from_quaternion
 
 from geometry_msgs.msg import PoseArray, PoseStamped
 from visualization_msgs.msg import Marker
@@ -114,8 +114,8 @@ class PurePursuit(object):
             for i in range(closest_ind+1, len(traj_pts)):
                 pt = traj_pts[i]
                 squared_dist = np.dot(cur_pos-pt, cur_pos-pt)
-                rospy.loginfo("Point: [%.2f, %.2f]", pt[0], pt[1])
-                rospy.loginfo("Squared Dist: %.2f", squared_dist)
+                #rospy.loginfo("Point: [%.2f, %.2f]", pt[0], pt[1])
+                #rospy.loginfo("Squared Dist: %.2f", squared_dist)
                 if (squared_dist > self.lookahead**2):
                     first_out = i
                     break
@@ -173,19 +173,21 @@ class PurePursuit(object):
             
             # Find current position and orientation
             cur_pos = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, 0])
-            cur_theta = np.arccos(msg.pose.pose.orientation.w)*2
+            #cur_theta = np.arccos(msg.pose.pose.orientation.w)*2
+            cur_theta = euler_from_quaternion([msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w])[2]
             
             # Determine the perpendicular distance to the goal point from the car position
             orientation_vec = np.array([np.cos(cur_theta), np.sin(cur_theta), 0])
             diff_vec = np.subtract(goal_point, cur_pos)
             cross = np.cross(orientation_vec, diff_vec)
             
-            #rospy.loginfo("Orientation: %.2f", cur_theta)
-            #rospy.loginfo("Goal Point: %.2f, %.2f", goal[0][0], goal[0][1])
-            #rospy.loginfo("Current Position: %.2f, %.2f", cur_pos[0], cur_pos[1])
-            #rospy.loginfo("Diff_vec: [%.2f, %.2f]", diff_vec[0], diff_vec[1])
+            rospy.loginfo("Orientation: %.2f, %.2f", orientation_vec[0], orientation_vec[1])
+            rospy.loginfo("angle: %.2f", cur_theta)
+            rospy.loginfo("Goal Point: %.2f, %.2f", goal[0][0], goal[0][1])
+            rospy.loginfo("Current Position: %.2f, %.2f", cur_pos[0], cur_pos[1])
+            rospy.loginfo("Diff_vec: [%.2f, %.2f]", diff_vec[0], diff_vec[1])
             perp_dist = cross[2] # Allowed to be negative to distinguish between turing left or right
-            #rospy.loginfo("Cross: [%.2f, %.2f, %.2f]", cross[0], cross[1], cross[2])
+            rospy.loginfo("Cross: [%.2f, %.2f, %.2f]", cross[0], cross[1], cross[2])
             #rospy.loginfo("Perpendicular Distance: %.2f", perp_dist)
        
             
@@ -199,8 +201,8 @@ class PurePursuit(object):
                     steering_angle = np.sign(perp_dist)*1
                 else:
                     steering_angle = 0
-            #rospy.loginfo("Steering: %.2ff", steering_angle)
-            #rospy.loginfo("----------------------------")
+            rospy.loginfo("Steering: %.2f", steering_angle)
+            rospy.loginfo("----------------------------")
             
             ack_msg = AckermannDriveStamped()
             ack_msg.header.stamp = rospy.Time.now()
