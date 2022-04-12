@@ -1,5 +1,5 @@
 <launch>
 	<node pkg="lab6" type="trajectory_loader.py" name="Trajectory_loader">
-		<param name="trajectory" value="/home/racecar/racecar_ws/src/path_planning/trajectories/test1.traj"/>
+		<param name="trajectory" value="/home/racecar/racecar_ws/src/path_planning/trajectories/loop2.traj"/>
 	</node>
 </launch>

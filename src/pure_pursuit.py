@@ -171,11 +171,13 @@ class PurePursuit(object):
             
             if goal[1]:
                 arc_curvature = (2*perp_dist)/(self.lookahead**2)
+                steering_angle = np.arctan(self.wheelbase_length*arc_curvature) # Getting steering angle from curvature
             else:
-                arc_curvature = (2*perp_dist)/(np.dot(cur_pos-goal_point, cur_pos-goal_point))
-                
+                if abs(perp_dist) > 1e-3:
+                    steering_angle = np.sign(perp_dist)*0.5
+                else:
+                    steering_angle = 0
 
-            steering_angle = np.arctan(self.wheelbase_length*arc_curvature) # Getting steering angle from curvature
             
             ack_msg = AckermannDriveStamped()
             ack_msg.header.stamp = rospy.Time.now()
