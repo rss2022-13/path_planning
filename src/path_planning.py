@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from audioop import reverse
 import rospy
 import numpy as np
 from geometry_msgs.msg import PoseStamped, PoseArray, Point, PointStamped, PoseWithCovarianceStamped
@@ -35,7 +34,7 @@ class PathPlan(object):
 
         # For eroding the map with scipy
         self.mask = np.ones((15,15))
-        self.stride = 2
+        self.stride = 5
 
         # odom traits
         self.turning_radius = 1
@@ -181,12 +180,17 @@ class PathPlan(object):
         
     def plan_path(self):
         ## CODE FOR PATH PLANNING ##
-        start = datetime.datetime.now()
+        start_time = time.time()
         # A* search
         rospy.loginfo("Planning Path")
         frontier = PriorityQueue()
+        seen = set()
         start_u, start_v = self.xy_to_uv(self.start)
+        start_u = int(start_u/self.stride)
+        start_v = int(start_v/self.stride)
         end_u, end_v = self.xy_to_uv(self.goal)
+        end_u = int(end_u/self.stride)
+        end_v = int(end_v/self.stride)
         frontier.put((0,0,(start_u, start_v)))
 
         came_from = dict()
@@ -198,50 +202,50 @@ class PathPlan(object):
         while not frontier.empty():
             current = frontier.get()[2]
 
+            seen.add(current)
+
             if current == self.goal:
                 break
 
             u, v = current[0], current[1]
+
             neighbors = {(u+1, v), (u-1, v), (u, v+1), (u, v-1), (u-1,v-1), (u-1, v+1), (u+1, v-1), (u+1, v+1)}
-            for next in neighbors:   #graph.neighbors(current)
+            for next in neighbors:
+                # ignore if seen
+                if next in seen:
+                    continue
                 # Ignore this path if obstacle
                 try:
-                    if self.map[int(next[0]/self.stride), int(next[1]/self.stride)] != 0:
+                    if self.map[next[0], next[1]] != 0:
                         continue
                 except(e):
                     # if out of bounds
                     print "error: ", e
                     continue
                 
-                new_cost = cost_so_far[current] + self.heuristic(current, next)
+                new_cost = cost_so_far[(u,v)] + self.heuristic((u,v), next)
                 if next not in cost_so_far or new_cost < cost_so_far[next]:
                     cost_so_far[next] = new_cost
-                    priority = new_cost + self.heuristic(next,(end_u, end_v))
+                    priority = new_cost + self.heuristic(next,(end_u/self.stride, end_v/self.stride))
                     frontier.put((priority, datetime.datetime.now(), next))
-                    came_from[next] = current
+                    came_from[next] = (u,v)
                     
         # set up trajectory based on A* search results
         s = Point()
         curr = (end_u, end_v)
-        s.x, s.y = self.uv_to_xy((end_u, end_v))
+        s.x, s.y = self.uv_to_xy((end_u*self.stride, end_v*self.stride))
         pts = [s]
-        # self.trajectory.addPoint(s)
         while curr in came_from.keys():
             next = came_from[curr]
             s2 = Point()
-            s2.x, s2.y = self.uv_to_xy(next)
-            # self.trajectory.addPoint(s2)
+            s2.x, s2.y = self.uv_to_xy((next[0]*self.stride, next[1]*self.stride))
             pts.append(s2)
             curr = next
         
         for e in reversed(pts):
             self.trajectory.addPoint(e)
 
-        end = datetime.datetime.now()
-        difference = end - start
-        seconds_in_day = 3600*24
-        time = divmod(difference.days * seconds_in_day + difference.seconds, 60)
-        print("Time:", time)
+        print "Time:", time.time() - start_time
         # publish trajectory
         self.traj_pub.publish(self.trajectory.toPoseArray())
 
