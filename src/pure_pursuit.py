@@ -16,7 +16,7 @@ class PurePursuit(object):
     """
     def __init__(self):
         self.odom_topic       = rospy.get_param("~odom_topic")
-        self.lookahead        = 1.5 # Tune later
+        self.lookahead        = 1 # Tune later
         self.speed            = 1 # Tune later
         self.wheelbase_length = 0.325 # From model robot, change later
         self.trajectory  = utils.LineTrajectory("/followed_trajectory")
@@ -79,9 +79,9 @@ class PurePursuit(object):
         if len(closest_dist_list) > 0:
             c_ind = closest_dist_list.argmin()
         else:
-            rospy.loginfo("Something went wrong again, the list is empty")
-            rospy.loginfo(len(closest_pts_list))
-            rospy.loginfo(len(traj_deltas))
+            #rospy.loginfo("Something went wrong again, the list is empty")
+            #rospy.loginfo(len(closest_pts_list))
+            #rospy.loginfo(len(traj_deltas))
             return None
 
         #rospy.loginfo("Closest Point: (%f.2, %f.2)", closest_pts_list[c_ind][0], closest_pts_list[c_ind][1])
@@ -148,7 +148,7 @@ class PurePursuit(object):
                 return (in_pt + t*vec_v, True)
 
             else:
-                rospy.loginfo("wtf, negative b^2-4*a*c")
+                #rospy.loginfo("wtf, negative b^2-4*a*c")
                 return None
             
             
@@ -181,13 +181,13 @@ class PurePursuit(object):
             diff_vec = np.subtract(goal_point, cur_pos)
             cross = np.cross(orientation_vec, diff_vec)
             
-            rospy.loginfo("Orientation: %.2f, %.2f", orientation_vec[0], orientation_vec[1])
-            rospy.loginfo("angle: %.2f", cur_theta)
-            rospy.loginfo("Goal Point: %.2f, %.2f", goal[0][0], goal[0][1])
-            rospy.loginfo("Current Position: %.2f, %.2f", cur_pos[0], cur_pos[1])
-            rospy.loginfo("Diff_vec: [%.2f, %.2f]", diff_vec[0], diff_vec[1])
+            #rospy.loginfo("Orientation: %.2f, %.2f", orientation_vec[0], orientation_vec[1])
+            #rospy.loginfo("angle: %.2f", cur_theta)
+            #rospy.loginfo("Goal Point: %.2f, %.2f", goal[0][0], goal[0][1])
+            #rospy.loginfo("Current Position: %.2f, %.2f", cur_pos[0], cur_pos[1])
+            #rospy.loginfo("Diff_vec: [%.2f, %.2f]", diff_vec[0], diff_vec[1])
             perp_dist = cross[2] # Allowed to be negative to distinguish between turing left or right
-            rospy.loginfo("Cross: [%.2f, %.2f, %.2f]", cross[0], cross[1], cross[2])
+            #rospy.loginfo("Cross: [%.2f, %.2f, %.2f]", cross[0], cross[1], cross[2])
             #rospy.loginfo("Perpendicular Distance: %.2f", perp_dist)
        
             
@@ -197,12 +197,12 @@ class PurePursuit(object):
                 steering_angle = np.arctan(self.wheelbase_length*arc_curvature) # Getting steering angle from curvature
             else:
                 if abs(perp_dist) > 1e-3:
-                    rospy.loginfo("Edge Case")
+                    #rospy.loginfo("Edge Case")
                     steering_angle = np.sign(perp_dist)*1
                 else:
                     steering_angle = 0
-            rospy.loginfo("Steering: %.2f", steering_angle)
-            rospy.loginfo("----------------------------")
+            #rospy.loginfo("Steering: %.2f", steering_angle)
+            #rospy.loginfo("----------------------------")
             
             ack_msg = AckermannDriveStamped()
             ack_msg.header.stamp = rospy.Time.now()
