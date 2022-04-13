@@ -16,7 +16,7 @@ class PurePursuit(object):
     """
     def __init__(self):
         self.odom_topic       = rospy.get_param("~odom_topic")
-        self.lookahead        = 2 # Tune later
+        self.lookahead        = 1.5 # Tune later
         self.speed            = 1 # Tune later
         self.wheelbase_length = 0.325 # From model robot, change later
         self.trajectory  = utils.LineTrajectory("/followed_trajectory")
