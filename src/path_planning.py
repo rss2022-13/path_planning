@@ -122,7 +122,8 @@ class PathPlan(object):
 
 
     def odom_cb(self, msg):
-        pass ## REMOVE AND FILL IN ##
+        if self.start is None:
+            self.start = msg.pose
 
 
     def goal_cb(self, msg):
