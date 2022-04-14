@@ -59,7 +59,7 @@ class PathPlan(object):
         Populates our map fields in the class with the map object, and sets the 
         map_set param to true so that other functions can run
         '''
-        rospy.loginfo("setting map")
+        #rospy.loginfo("setting map")
         # data is indexed by (u,v) now that it is reshaped and transposed
         map = np.array(msg.data).reshape((msg.info.height, msg.info.width)).T
 
@@ -91,7 +91,7 @@ class PathPlan(object):
         Converts from (x,y) -> (u,v)
         '''
         if not self.map_set:
-            rospy.loginfo("Map not set yet")
+            #rospy.loginfo("Map not set yet")
             return
 
         xy_homo = np.array([[coord[0],coord[1],0,1]]).T
@@ -182,7 +182,7 @@ class PathPlan(object):
         ## CODE FOR PATH PLANNING ##
         start_time = time.time()
         # A* search
-        rospy.loginfo("Planning Path")
+        #rospy.loginfo("Planning Path")
         frontier = PriorityQueue()
         seen = set()
         start_u, start_v = self.xy_to_uv(self.start)
@@ -220,7 +220,7 @@ class PathPlan(object):
                         continue
                 except(e):
                     # if out of bounds
-                    print "error: ", e
+                    #print "error: ", e
                     continue
                 
                 new_cost = cost_so_far[(u,v)] + self.heuristic((u,v), next)
@@ -245,7 +245,7 @@ class PathPlan(object):
         for e in reversed(pts):
             self.trajectory.addPoint(e)
 
-        print "Time:", time.time() - start_time
+        #print "Time:", time.time() - start_time
         # publish trajectory
         self.traj_pub.publish(self.trajectory.toPoseArray())
 
