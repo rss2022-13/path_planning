@@ -34,7 +34,7 @@ class PathPlan(object):
 
         # For eroding the map with scipy
         self.mask = np.ones((15,15))
-        self.stride = 5
+        self.stride = 1
 
         # odom traits
         self.turning_radius = 1
@@ -59,7 +59,7 @@ class PathPlan(object):
         Populates our map fields in the class with the map object, and sets the 
         map_set param to true so that other functions can run
         '''
-        rospy.loginfo("setting map")
+        #rospy.loginfo("setting map")
         # data is indexed by (u,v) now that it is reshaped and transposed
         map = np.array(msg.data).reshape((msg.info.height, msg.info.width)).T
 
@@ -91,7 +91,7 @@ class PathPlan(object):
         Converts from (x,y) -> (u,v)
         '''
         if not self.map_set:
-            rospy.loginfo("Map not set yet")
+            #rospy.loginfo("Map not set yet")
             return
 
         xy_homo = np.array([[coord[0],coord[1],0,1]]).T
@@ -152,9 +152,9 @@ class PathPlan(object):
         # self.start[2,3] = 0
         # self.start_theta = euler_from_quaternion([msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w])[2]
         self.start = int(np.round(msg.pose.pose.position.x)), int(np.round(msg.pose.pose.position.y))
-        # if self.goal is not None and self.map_set:
-        #     self.trajectory.clear()
-        #     self.plan_path()
+        if self.goal is not None and self.map_set:
+            self.trajectory.clear()
+            self.plan_path()
 
         return None
 
@@ -181,9 +181,10 @@ class PathPlan(object):
         
     def plan_path(self):
         ## CODE FOR PATH PLANNING ##
+        print "PLANNING PATH!"
         start_time = time.time()
         # A* search
-        rospy.loginfo("Planning Path")
+        #rospy.loginfo("Planning Path")
         frontier = PriorityQueue()
         seen = set()
         start_u, start_v = self.xy_to_uv(self.start)
@@ -205,7 +206,7 @@ class PathPlan(object):
 
             seen.add(current)
 
-            if current == self.goal:
+            if current == (end_u, end_v):
                 break
 
             u, v = current[0], current[1]
@@ -221,7 +222,7 @@ class PathPlan(object):
                         continue
                 except(e):
                     # if out of bounds
-                    print "error: ", e
+                    #print "error: ", e
                     continue
                 
                 new_cost = cost_so_far[(u,v)] + self.heuristic((u,v), next)
@@ -234,7 +235,7 @@ class PathPlan(object):
         # set up trajectory based on A* search results
         s = Point()
         curr = (end_u, end_v)
-        s.x, s.y = self.uv_to_xy((end_u*self.stride, end_v*self.stride))
+        s.x, s.y = self.goal[0], self.goal[1]
         pts = [s]
         while curr in came_from.keys():
             next = came_from[curr]
