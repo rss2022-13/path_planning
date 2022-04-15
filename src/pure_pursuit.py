@@ -122,8 +122,8 @@ class PurePursuit(object):
             out_pt = traj_pts[first_out][:]
             in_pt = traj_pts[first_out-1][:]
             
-            vec_v = out_pt - in_pt;
-            vec_w = in_pt - cur_pos;
+            vec_v = out_pt - in_pt
+            vec_w = in_pt - cur_pos
             
             c = np.dot(vec_w, vec_w) - self.lookahead**2
             b = 2*np.dot(vec_v, vec_w)

@@ -5,7 +5,7 @@ from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import PoseStamped
 
 def listen(msg):
-    pose = msg.pose.pose
+    pose = msg.pose
     x = pose.position.x
     y = pose.position.y
     o = pose.orientation
