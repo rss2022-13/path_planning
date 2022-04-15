@@ -34,7 +34,7 @@ class PathPlan(object):
 
         # For eroding the map with scipy
         self.mask = np.ones((15,15))
-        self.stride = 5
+        self.stride = 1
 
         # odom traits
         self.turning_radius = 1
@@ -151,9 +151,9 @@ class PathPlan(object):
         # self.start[2,3] = 0
         # self.start_theta = euler_from_quaternion([msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w])[2]
         self.start = int(np.round(msg.pose.pose.position.x)), int(np.round(msg.pose.pose.position.y))
-        # if self.goal is not None and self.map_set:
-        #     self.trajectory.clear()
-        #     self.plan_path()
+        if self.goal is not None and self.map_set:
+            self.trajectory.clear()
+            self.plan_path()
 
         return None
 
@@ -180,6 +180,7 @@ class PathPlan(object):
         
     def plan_path(self):
         ## CODE FOR PATH PLANNING ##
+        print "PLANNING PATH!"
         start_time = time.time()
         # A* search
         #rospy.loginfo("Planning Path")
@@ -204,7 +205,7 @@ class PathPlan(object):
 
             seen.add(current)
 
-            if current == self.goal:
+            if current == (end_u, end_v):
                 break
 
             u, v = current[0], current[1]
@@ -233,7 +234,7 @@ class PathPlan(object):
         # set up trajectory based on A* search results
         s = Point()
         curr = (end_u, end_v)
-        s.x, s.y = self.uv_to_xy((end_u*self.stride, end_v*self.stride))
+        s.x, s.y = self.goal[0], self.goal[1]
         pts = [s]
         while curr in came_from.keys():
             next = came_from[curr]
@@ -245,7 +246,7 @@ class PathPlan(object):
         for e in reversed(pts):
             self.trajectory.addPoint(e)
 
-        #print "Time:", time.time() - start_time
+        print "Time:", time.time() - start_time
         # publish trajectory
         self.traj_pub.publish(self.trajectory.toPoseArray())
 
